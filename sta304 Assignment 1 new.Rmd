@@ -1,0 +1,205 @@
+---
+title: "Performance of Apartment Buildings in Toronto"
+author: "Xiao Bai"
+date: "6 Feburary 2022"
+abstract: "Apartment building dataset is an important tool for people who moved to Toronto recently and have not found a place to live, because it provides them with information of different types of apartment buildings in Toronto so that they can take advantage of it and choose a preferred apartment building. The report will mainly focus on analyzing the time in which apartment buildings were constructed as well as the variation of facilities of different buildings in different constructed years. The result shows that a large proportion of buildings were built during the year between 1950 and 1970, and our expected reason is that it is due to the shortperiod of rapid economy expansion after the Great Depression. Furthermore, buildings built between 1950 and 1975 have the most number of visitor parking spots, which means that if one only cares about whether there is a free visitor parking, simply looking for apartments that were built within this period would save them much time."
+output:
+  pdf_document: default
+  bookdown::pdf_document2: default
+thanks: 'Code and data are available at: https://github.com/XiaoBai-blip/STA304'
+toc: no
+bibliography: myreferencelist.bib
+---
+
+# Introduction
+
+People's demand for rental accommodation in Toronto has increase significantly in recent years. Although there have not been many new apartment buildings constructed in the last few decades and the existing apartment buildings in downtown Toronto are not as numerous as you might think, the rental demand for apartment is expected to keep increasing to some extent. At the same time, a report by Toronto Regional Real Estate Board states the amount of rental apartments that were leased this year doubled than the same time last year (Arsenych, 2021). Moreover, as there was a substantial increase of immigration and student population into the GTA area, this trend appears to continue rising to the next year (Toronto Regional Real Estate Board, 2021). This phenomena indicates that people who have recently moved to Toronto and seeking for an apartment may have difficulty choosing apartment building from these substantial amount of options. Therefore, it is necessary for them to understand Toronto's different types of apartment buildings so that they can have a better idea of which type of apartment is the most appropriate one for them. However, characteristics of buildings are different from each other, for example, buildings vary in the number of stories and units. Also, people's preference for different types is also not the same as each other. For instance, some people tend to live in an apartment where there are only few units in each floor while others may prefer to live in a relatively tall building as they can enjoy the scenery outside the window. Thus, for this report, I will only consider factors that I think are essential for a tenant to know before they move in. 
+
+Based on that, this report will mainly focus on the time (in years) that each building was built and the variation of facilities of different buildings in different constructed years. Specifically, I will compare each building's installation status of four types of facilities: heating equipment, number of stories, number of units, as well as visitor parking availability. I will also discuss the statistical bias and limitation that is raised from navigating this dataset. Ideally, this report can be a reference for people who are still deciding which apartment building they should choose.
+
+The analysis will be conducted in R (@citeR), and the packages we will use are dplyr[@citedplyr], tidyverse[@citetidyverse], tidyr[@citetidyr]. All graphs will be created using function ggplot2[@citeggplot2] and kableExtra[@citekableExtra] will be applied in tables.The packages knitr (Xie, 2021) are also used to generate the R markdown report.
+
+```{r, message = FALSE, include = FALSE}
+#install.packages("tidyverse")
+#install.packages("opendatatoronto")
+#install.packages("tidyr")
+#install.packages("kableExtra")
+library(kableExtra)
+library(tidyverse)
+library(tidyr)
+library(opendatatoronto)
+library(dplyr)
+library(janitor) #those packages are used for following analysis
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+package <- show_package("2b98b3f3-4f3a-42a4-a4e9-b44d3026595a") #extract the data from opendatatoronto
+package
+resources <- list_package_resources("2b98b3f3-4f3a-42a4-a4e9-b44d3026595a")
+datastore_resources <- filter(resources, tolower(format) %in% c('csv', 'geojson'))
+data <- filter(datastore_resources, row_number()==1) %>% get_resource()
+write.csv(
+  x = data, 
+  file = "Apartment Building Registration"
+  )# export data into csv format and we will use this data frame in the further study
+
+```
+# Data
+
+
+## *Data Collection and Characteristics*
+
+The dataset is collected from 'Open Data Toronto' @citeopendatatoronto and it contains information about Toronto's current building information. Open Data Toronto is a digital data that is initiative by the City of Toronto government and it is made available with the technical characteristics necessary for it to be freely used @citeopendatatoronto. It provides a variety of tabular datasets relating to the city's services, infraustructions and development. There are more than ten different data categories in this portal, and the data that will be used in this paper relates to the information of Toronto's apartment building which was constructed between the year 1805 and 2021. Specifically, each apartment's information was first collected from building owners, and then those information was registered and uploaded to the city's program for further use. In addition, the building information will be renewed annually to keep the most up-to-date dataset. There are 3488 observations and 70 variables in the dataset. Most of variables are categorical and only ten of them are numerical variables. Categorical variables are about facility status in a building, in other words, it shows whether a building's common facilities, open areas or all other equipment are installed properly in that building. Numerical variables show the exact number of facilities such as the number of units or stories. In this analysis, I will use seven variables and provide a general understanding of Toronto's accommodation condition to give new coming tenants a better way of choosing their preferred apartments. After selecting variables that we are interested in, a sample view of original dataset is displayed below.
+
+```{r, echo=FALSE}
+apartment_building <- read.csv(file="Apartment Building Registration") #first have a general overview of what our data looks like
+
+apartment_cleaned =apartment_building %>%
+  select(HEATING_EQUIPMENT_STATUS,YEAR_BUILT,HEATING_EQUIPMENT_YEAR_INSTALLED,CONFIRMED_STOREYS,CONFIRMED_UNITS,GARBAGE_CHUTES,VISITOR_PARKING)#select the variables that we are interested in
+head(apartment_cleaned)#have a look at the first ten rows of our data
+
+```
+
+
+
+## *Apartment Building Counts and Heating Equipment Status*
+
+
+Although commenting the performance of a building or deciding whether this building has a good living environment depends on many characteristics, one way can be from analyzing how old this building is. Therefore, the first step is to find out the year that each building was built and then count the number of apartment buildings by different years. However, as it can be distracted to list all years with its corresponding number of buildings, a more clear way is to make them into interval time. By doing so, a new variable named "year-built_new1" was created. Figure 1 displays the total number of buildings constructed during specific time period. Note that the year refers to the year that buildings were built, and does not necessarily indicate the year the building owners registered to the City's program. Based on the figure, we can see that the number of buildings that were built between 1950 and 1975 accounts for the highest (>1500) among all five periods while there were only few apartments constructed before 1950. It is not unexpected because the Great Depression happened during the period between 1930 and 1940. According to Struthers (2013), the world's population growth reached the lowest point during 1930s, and at the same time, Canada's population in urban area grew even less significant than rural area. This Great Depression caused Canada's economy drop dramatically, which seems a reason of why only few buildings were constructed at that time. After 1940, the economy began recovering, and it took approximately eight years for the world's economy to recover back to normal (Wikipedia, 2022). This can be a potential reason that a short period of economy boom after the Great depression stimulated a society's development of public infrastructures. Therefore, we can see a dramatic increase in the number of new apartment buildings during 1950-1975.
+
+
+
+
+```{r, echo=FALSE}
+
+
+apartment_cleaned =apartment_building %>%
+  select(HEATING_EQUIPMENT_STATUS,YEAR_BUILT,HEATING_EQUIPMENT_YEAR_INSTALLED,CONFIRMED_STOREYS,CONFIRMED_UNITS,GARBAGE_CHUTES,VISITOR_PARKING) %>% #select variables again
+  arrange(YEAR_BUILT)%>% #arrange the year according to year that buildings were build
+  filter(HEATING_EQUIPMENT_YEAR_INSTALLED>YEAR_BUILT)%>% #filter out only observations that have installation year larger than year built, otherwise it does not make sense
+  mutate(year_built_new1 =
+           case_when(
+             YEAR_BUILT < 1900 ~ "<1900",
+             YEAR_BUILT <= 1925 ~ "1900-1925",
+             YEAR_BUILT <= 1950 ~ "1925-1950",
+             YEAR_BUILT <= 1975 ~ "1950-1975",
+             TRUE ~ "1975<"),
+         year_built_new2 =
+           case_when(
+             (YEAR_BUILT < 1955) & (YEAR_BUILT >= 1950) ~ "1950-1955",
+             (YEAR_BUILT < 1960) & (YEAR_BUILT >= 1955) ~ "1955-1960",
+             (YEAR_BUILT < 1965) & (YEAR_BUILT >= 1960) ~ "1960-1965",
+             (YEAR_BUILT < 1970) & (YEAR_BUILT >= 1965) ~ "1965-1970",
+             (YEAR_BUILT < 1975) & (YEAR_BUILT >= 1970) ~ "1970-1975",
+             
+             
+             TRUE ~ "useless")) #create two new variables, the first one is from 1900 to 1975 and we divide the time into five small interval and we will use it to create graph. The second variables have more conditions and time period is shorter than first one. and save them in new data frame 'apartment_cleaned'
+
+
+apartment_cleaned %>% #use new dataframe and plot a histogram 
+  ggplot(mapping = aes(x = year_built_new1))+geom_bar()+ #use year_built_new1 as x variable
+  labs(caption = "Figure 1: Distribution of total Number of Buildings by Different Years", 
+       x = "Year", 
+       y = "Total Number of Buildings", color="green"
+       ) +
+  theme_minimal() #set labels and style
+  
+```
+
+
+In addition, as we found out that most apartment buildings in Toronto were constructed during the period between 1950 and 1975, it would be better to compare their characteristics since they were built within the same period. The variable HEATING_EQUIPMENT_STATUS is then used and it states whether the heating equipment is original or replaced. Figure 2 shows the total number of heating equipment replaced and total number equipment that were not replaced for the period where buildings were built between 1950 and 1975. To make the graph more clear, I also divide the whole period into five short periods. Based on the graph, we can see a slight gradual increase in the number of apartment building registered to the City's program between the years 1950 and 1965, followed by a drop in the number of buildings in the next 10 years. Moreover, most of buildings built between 1970 and 1975 were replaced while a small proportion of buildings' heating equipment have still not replaced during the first five year period. The other three time periods have approximately the same percentage of replaced heating equipment in their buildings. Some people may think it is necessary for a place to have an advanced heating system because the old heating equipment can be harmful to their heath as well as the environment. Therefore, this figure might be useful for people who tend to see which year has the most number of buildings with heating system replaced even though all five periods appear to show a similar percentage.
+```{r, echo=FALSE}
+apartment_cleaned %>%
+  filter(year_built_new2 != "useless")%>% #filter out other unnecessary observations
+  ggplot(mapping = aes(x = year_built_new2, fill = HEATING_EQUIPMENT_STATUS))+
+  geom_bar()+theme_minimal()+ #plot a histogram according to equipment status
+  labs(x = "Year",
+       y = "Total Number of Apartment Building",
+       fill = "Heating Equipment Status ", # name the x and y axis
+       
+       caption = "Figure 2: Heating Equipment Status for Different Buildings during 1950-1980")+
+  scale_fill_brewer() #fill with color
+
+```
+
+Figure 3 shows the frequency of the number of years it takes for a heating system to be installed after the building was built. In other words, some building managers were less likely to install a heating system right after the building was constructed. For some reason, they tend to have heating equipment installed a few years after that. Therefore, in this time, I calculate the time between heating equipment installed and building built. The x-axis indicates that there was no heating equipment in this building until x years after, and y-axis shows the number of buildings. In the figure, we can notice that during the first 25 years (1900-1925), the average time it takes for a heating system to be installed is around 90 years, however, the gap became small over time. Buildings built after 1975 have a mean installing time only about 23 years. This result reveals that new buildings are more likely to have heating system established as soon as building has completed its construction.
+
+```{r,echo=FALSE}
+
+apartment_cleaned2 = apartment_cleaned  %>%
+  mutate(built_difference = HEATING_EQUIPMENT_YEAR_INSTALLED - YEAR_BUILT) #create a new variable which shows the difference between year an equipment built and year buildings were built
+
+
+apartment_cleaned2%>%
+  ggplot(mapping = aes(x = built_difference, color =year_built_new1 )) + #use new variable and plot histogram according to different year period
+  geom_freqpoly(binwidth = 10)+
+  labs(x = "Total Number of Years",
+       y = "Density",
+       caption = "Figure 3: Number of Years for a Heating Equipment to be Completely Installed",
+       color = "Year Period"
+       )
+
+
+```
+
+
+
+## *Story, Unit and Garbage Chute Counts*
+
+
+Another characteristics that people tend to consider before they rent is the number of stories and units inside the building. By doing so, I calculate the average number of stories and units for buildings built before and after year 1950. The summary table 1 below shows that within 1827 buildings that were constructed after 1950, the average number of story is 7.866995 while the average unit is 89.72797. By constrast, buildings that were constructed before 1950 has a mean number of 3.685328 stories and 27.57915 units. Therefore, if someone wants to live in a place has less floors and units, then it would be better to choose an old building instead of newer one. However, if one cares more about whether there is a garbage chute at their floor, then it can be a better choice to choose buildings after 1950 since the proportion of buildings established before 1950 that has a garbage chute is only 7.34% compared to those established after 1950 (46.09%).
+
+
+
+```{r, echo=FALSE}
+apartment_cleaned4 = apartment_cleaned %>%
+  mutate(year_built_new3 = case_when( #create new variable again because we only interested in buildings built before 1950 and after 1950
+    YEAR_BUILT <= 1950 ~ "Before 1950",
+    TRUE ~ "After 1950"
+  )) %>%
+  filter(!is.na(GARBAGE_CHUTES))%>% #filter out missing values
+  group_by(Constructed_Year = year_built_new3) %>% #show result according to two period
+  summarise(Total = n(), Average_stories = mean(CONFIRMED_STOREYS), Average_units = mean(CONFIRMED_UNITS), Proportion_gar_chutes = sum(GARBAGE_CHUTES == 'YES')/n())%>% #create a summary table and calculate its mean value and total value and garbage chutes proportion
+  kable(caption = "Average number of Stories, Units and Garbage Chutes in a Building  ") #make our graph beautiful
+apartment_cleaned4
+```
+## *Visitor Parking Status*
+
+
+The "VISITOR_PARKING" variable in the dataset refers to the visitor parking availability in a building. Figure 4 displays the total number of buildings by different types of visitor parking and year. The number of different types appear to vary in different years. We can see that between the year 1950 and 1975, a large number buildings have a free visitor parking spots. By contrast, a large proportion of building constructed during year 1925 and 1950 has no visitor parking, with only a small percentage of buildings have either free parking space or paid one. 
+
+```{r, echo=FALSE}
+apartment_cleaned %>%
+  filter(!is.na(VISITOR_PARKING))%>% #filter out missing value 
+  ggplot(mapping = aes(x = year_built_new1, fill = VISITOR_PARKING))+ #graph histogram according to visitor parking status and year
+  geom_bar(position = "dodge")+theme_minimal()+
+  labs(x = "Year",
+       y = "Total Number of Visitor Parking Spots",
+       fill = "Visitor Parking Status ",
+       caption = "Figure 4: Visitor Parking Availabilities for Buildings Built in Different Years",
+       )+
+  scale_fill_brewer(palette = "Greens")+ #fill with green colors
+  coord_flip()
+```
+
+
+## *Limitation*
+
+
+The statistical bias is also obvious. Since the dataset only contains information of buildings that were registered to Apartment Building Standard (ABS) program, we miss information of those buildings which have still not registered. This can make the result less accurate as those missing data were not included in our analysis. Similarly, as this information was collected from building owners/managers during the initial registration process, it is possible that information provided by them may not be as reliable as we expected. Furthermore, analyzing this data can only give us a better understanding of current Toronto apartment buildings' phenomenon, and it is hard to make a prediction or identifying future trend from this data. For example, predicting the probability that the number of buildings will have a free visitor parking in the future might not be achieved. Moreover, the reason of why some of old buildings still have not replaced their heating equipment is not clear and may depends on many other factors. Therefore, further research needs to be done.
+
+\newpage
+
+# References
+
+Struthers James (2013). The Great Depression in Canada. The Canadian Encyclopedia.
+  https://www.thecanadianencyclopedia.ca/en/article/great-depression#
+
+Wikipedia (2022). Great Depression. Wikipedia. https://en.wikipedia.org/wiki/Great_Depression#Turning_point_and_recovery
+
+Toronto Regional Real Estate Board (2021). Q2 RENTAL TRANSACTIONS DOUBLE YEAR-OVER-YEAR; AVERAGE RENTS STILL LOWER. Toronto Regional     Real      Estate Board. https://trreb.ca/index.php/news/news-releases/1491-q2-rental-transactions-double-year-over-year-average-rents     still-lower
+  
+Arsenych Alex (2021). Toronto's Rental Market Is Getting Ridiculous But Here's How To Snag Your Dream Apartment. Real Estate.                 
+  https://www.narcity.com/toronto/torontos-rental-market-is-wild-but-heres-how-to-rent-that-dream-apartment
+
+Yihui Xie (2021). knitr: A General-Purpose Package for Dynamic Report Generation in R. R package version 1.37.
+
+Hadley Wickham (2021). tidyr: Tidy Messy Data. https://tidyr.tidyverse.org, https://github.com/tidyverse/tidyr.
